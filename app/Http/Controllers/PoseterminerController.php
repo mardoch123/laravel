@@ -1,12 +1,14 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Queue;
 use App\Models\Poseterminer;
-use App\Models\Mission; // Utilisez Client au lieu de Mission
+use App\Models\Mission;
+use App\Jobs\ProcessImage;
 
 class PoseterminerController extends Controller
 {
@@ -14,8 +16,8 @@ class PoseterminerController extends Controller
     {
         try {
             // Validation des données
-            $request->validate([
-                'mission_id' => 'required|exists:clients,id', // Modification pour correspondre à la table clients
+            $validatedData = $request->validate([
+                'mission_id' => 'required|exists:clients,id',
                 'photo_emplacement_evaporateur' => 'required|image|max:2560',
                 'photo_numero_serie_evaporateur' => 'required|image|max:2560',
                 'photo_raccordement_electrique' => 'required|image|max:2560',
@@ -34,16 +36,26 @@ class PoseterminerController extends Controller
                 'photo_numero_serie_condensateur'
             ];
 
-            // Traitement des fichiers et stockage
+            // Créer le dossier 'uploads' dans 'public' si nécessaire
+            if (!file_exists(public_path('uploads'))) {
+                mkdir(public_path('uploads'), 0777, true);
+            }
+
             foreach ($photos as $photo) {
                 if ($request->hasFile($photo)) {
-                    $path = $request->file($photo)->store('photos', 'public');
-                    $data[$photo] = $path;
-                    
-                    // Log pour débogage
-                    Log::info("Fichier $photo stocké avec succès.", ['path' => $path]);
+                    // Générer un nom unique pour chaque fichier
+                    $photoName = Str::random(10) . '.' . $request->file($photo)->getClientOriginalExtension();
+                    $file = $request->file($photo);
+
+                    // Stocker le fichier sans redimensionner pour un traitement asynchrone
+                    $path = $file->move(public_path('uploads'), $photoName);
+                    $data[$photo] = 'uploads/' . $photoName;
+
+                    // Placer le traitement en file d'attente pour redimensionnement et compression
+                    Queue::push(new ProcessImage($data[$photo], 800, 600, 60)); // Taille cible et qualité
+
+                    Log::info("Fichier $photo en cours de traitement en arrière-plan.", ['path' => $data[$photo]]);
                 } else {
-                    // Log pour débogage en cas de fichier manquant
                     Log::error("Le fichier $photo est manquant.");
                 }
             }
@@ -52,17 +64,15 @@ class PoseterminerController extends Controller
             $record = Poseterminer::where('mission_id', $mission_id)->first();
 
             if ($record) {
-                // Mise à jour si l'enregistrement existe
                 $record->update($data);
                 Log::info("Enregistrement mis à jour dans poseterminer", ['record_id' => $record->id]);
             } else {
-                // Création si l'enregistrement n'existe pas
                 $record = Poseterminer::create($data);
                 Log::info("Enregistrement créé dans poseterminer", ['record_id' => $record->id]);
             }
 
             // Mettre à jour l'attribut raisonsocial de la mission dans la table clients
-            $client = Mission::find($mission_id); // Utiliser Client au lieu de Mission
+            $client = Mission::find($mission_id); 
             if ($client) {
                 $client->raisonsocial = 1;
                 $client->save();
@@ -76,17 +86,17 @@ class PoseterminerController extends Controller
             $imageLinks = [];
             foreach ($photos as $photo) {
                 if (isset($data[$photo])) {
-                    $imageLinks[$photo] = Storage::url($data[$photo]);
+                    $imageLinks[$photo] = url($data[$photo]);
                 }
             }
 
-            // Retourner la vue Blade avec les images
             return view('poseterminer-success', ['images' => $imageLinks]);
 
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return view('error', ['errors' => $e->errors()]);
         } catch (\Exception $e) {
-            // Gestion des exceptions et log de l'erreur
             Log::error("Erreur dans la méthode store", ['error' => $e->getMessage()]);
-            return response()->json(['message' => 'Une erreur est survenue lors de l\'enregistrement des photos.'], 500);
+            return view('error', ['errors' => ['Une erreur est survenue lors de l\'enregistrement des photos.']]);
         }
     }
 }

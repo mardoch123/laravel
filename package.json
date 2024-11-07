@@ -3,7 +3,8 @@
     "type": "module",
     "scripts": {
         "dev": "vite",
-        "build": "vite build"
+        "serve": "vue-cli-service serve",
+        "build": "vue-cli-service build"
     },
     "devDependencies": {
         "@inertiajs/vue3": "^1.0.14",

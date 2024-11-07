@@ -120,11 +120,10 @@ const submitForm = async (event) => {
         <!-- Contenu du modal ici -->
                 <h3 class="text-xl font-semibold mb-4">Télécharger les Photos</h3>
                 <form method="POST" action="/poseterminer" enctype="multipart/form-data">
-   
     <input type="hidden" name="mission_id" :value="mission.id" />
 
-    <div class="mb-2">
-        <label for="photo_emplacement_evaporateur" class="block text-gray-700 mb-1 text-sm">
+    <div class="mb-4">
+        <label for="photo_emplacement_evaporateur" class="block text-gray-700 mb-1 text-sm font-semibold">
             Photo emplacement évaporateur <span class="text-red-500">*</span>
         </label>
         <input 
@@ -133,13 +132,15 @@ const submitForm = async (event) => {
             name="photo_emplacement_evaporateur" 
             required 
             accept="image/*" 
-            class="block w-full text-sm text-gray-700 border border-gray-300 rounded p-1 h-8"
+            class="block w-full text-sm text-gray-700 border border-gray-300 rounded p-2"
+            onchange="previewImage(event, 'preview_emplacement_evaporateur')"
         />
-        <small class="text-gray-500">Max 2.5 Mo</small>
+        <small class="text-gray-500 block mb-2">Max 2.5 Mo</small>
+        <img id="preview_emplacement_evaporateur" class="hidden w-32 h-32 object-cover rounded border mt-2" />
     </div>
-    
-    <div class="mb-2">
-        <label for="photo_numero_serie_evaporateur" class="block text-gray-700 mb-1 text-sm">
+
+    <div class="mb-4">
+        <label for="photo_numero_serie_evaporateur" class="block text-gray-700 mb-1 text-sm font-semibold">
             Photo numéro de série évaporateur <span class="text-red-500">*</span>
         </label>
         <input 
@@ -148,13 +149,15 @@ const submitForm = async (event) => {
             name="photo_numero_serie_evaporateur" 
             required 
             accept="image/*" 
-            class="block w-full text-sm text-gray-700 border border-gray-300 rounded p-1 h-8"
+            class="block w-full text-sm text-gray-700 border border-gray-300 rounded p-2"
+            onchange="previewImage(event, 'preview_numero_serie_evaporateur')"
         />
-        <small class="text-gray-500">Max 2.5 Mo</small>
+        <small class="text-gray-500 block mb-2">Max 2.5 Mo</small>
+        <img id="preview_numero_serie_evaporateur" class="hidden w-32 h-32 object-cover rounded border mt-2" />
     </div>
-    
-    <div class="mb-2">
-        <label for="photo_raccordement_electrique" class="block text-gray-700 mb-1 text-sm">
+
+    <div class="mb-4">
+        <label for="photo_raccordement_electrique" class="block text-gray-700 mb-1 text-sm font-semibold">
             Photo raccordement électrique <span class="text-red-500">*</span>
         </label>
         <input 
@@ -163,13 +166,15 @@ const submitForm = async (event) => {
             name="photo_raccordement_electrique" 
             required 
             accept="image/*" 
-            class="block w-full text-sm text-gray-700 border border-gray-300 rounded p-1 h-8"
+            class="block w-full text-sm text-gray-700 border border-gray-300 rounded p-2"
+            onchange="previewImage(event, 'preview_raccordement_electrique')"
         />
-        <small class="text-gray-500">Max 2.5 Mo</small>
+        <small class="text-gray-500 block mb-2">Max 2.5 Mo</small>
+        <img id="preview_raccordement_electrique" class="hidden w-32 h-32 object-cover rounded border mt-2" />
     </div>
-    
-    <div class="mb-2">
-        <label for="photo_emplacement_condensateur" class="block text-gray-700 mb-1 text-sm">
+
+    <div class="mb-4">
+        <label for="photo_emplacement_condensateur" class="block text-gray-700 mb-1 text-sm font-semibold">
             Photo emplacement condensateur <span class="text-red-500">*</span>
         </label>
         <input 
@@ -178,13 +183,15 @@ const submitForm = async (event) => {
             name="photo_emplacement_condensateur" 
             required 
             accept="image/*" 
-            class="block w-full text-sm text-gray-700 border border-gray-300 rounded p-1 h-8"
+            class="block w-full text-sm text-gray-700 border border-gray-300 rounded p-2"
+            onchange="previewImage(event, 'preview_emplacement_condensateur')"
         />
-        <small class="text-gray-500">Max 2.5 Mo</small>
+        <small class="text-gray-500 block mb-2">Max 2.5 Mo</small>
+        <img id="preview_emplacement_condensateur" class="hidden w-32 h-32 object-cover rounded border mt-2" />
     </div>
-    
-    <div class="mb-2">
-        <label for="photo_numero_serie_condensateur" class="block text-gray-700 mb-1 text-sm">
+
+    <div class="mb-4">
+        <label for="photo_numero_serie_condensateur" class="block text-gray-700 mb-1 text-sm font-semibold">
             Photo numéro de série condensateur <span class="text-red-500">*</span>
         </label>
         <input 
@@ -193,27 +200,52 @@ const submitForm = async (event) => {
             name="photo_numero_serie_condensateur" 
             required 
             accept="image/*" 
-            class="block w-full text-sm text-gray-700 border border-gray-300 rounded p-1 h-8"
+            class="block w-full text-sm text-gray-700 border border-gray-300 rounded p-2"
+            onchange="previewImage(event, 'preview_numero_serie_condensateur')"
         />
-        <small class="text-gray-500">Max 2.5 Mo</small>
+        <small class="text-gray-500 block mb-2">Max 2.5 Mo</small>
+        <img id="preview_numero_serie_condensateur" class="hidden w-32 h-32 object-cover rounded border mt-2" />
     </div>
 
-    <div class="flex justify-end mt-4">
+    <div class="flex justify-end mt-6">
         <button 
             type="submit" 
-            class="bg-blue-500 text-white px-4 py-2 rounded-lg text-lg font-semibold hover:bg-blue-600 transition duration-200"
+            class="bg-blue-500 text-white px-5 py-2 rounded-lg text-lg font-semibold hover:bg-blue-600 transition duration-200"
         >
             Enregistrer
         </button>
         <button 
-                            type="button" 
-                            @click="showModal = false"
-                            class="bg-red-500 text-white px-4 py-2 rounded-lg text-lg font-semibold hover:bg-red-600 transition duration-200 ml-4"
-                        >
-                            Annuler
-                        </button>
+            type="button" 
+            @click="showModal = false"
+            class="bg-red-500 text-white px-5 py-2 rounded-lg text-lg font-semibold hover:bg-red-600 transition duration-200 ml-4"
+        >
+            Annuler
+        </button>
     </div>
 </form>
+
+<script>
+function previewImage(event, previewId) {
+    const input = event.target;
+    const file = input.files[0];
+    const preview = document.getElementById(previewId);
+    
+    if (file) {
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            preview.src = e.target.result;
+            preview.classList.remove('hidden');
+        };
+        
+        reader.readAsDataURL(file);
+    } else {
+        preview.src = '';
+        preview.classList.add('hidden');
+    }
+}
+</script>
+
 
 
             </div>
@@ -234,4 +266,3 @@ export default {
     }
 };
 </script>
-
