@@ -1,18 +1,41 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { Head, usePage } from '@inertiajs/vue3';
+import Swal from 'sweetalert2';
 
-// Accéder aux données passées depuis Laravel via Inertia
 const { props } = usePage();
 const mission = ref(props.mission);
 const climatiseurs = ref(props.climatiseurs);
 const images = ref(props.images);
 const showModal = ref(false);
 
+// Prévisualisation des images sélectionnées
+const selectedImages = ref({
+    photo_emplacement_evaporateur: null,
+    photo_numero_serie_evaporateur: null,
+    photo_raccordement_electrique: null,
+    photo_emplacement_condensateur: null,
+    photo_numero_serie_condensateur: null,
+});
+
+// Barre de progression et contrôle du chargement
+const uploadProgress = ref(0);
+const isUploading = ref(false);
+const submitDisabled = ref(true);
+
+// Obtenir le jeton CSRF depuis la balise meta
+const csrfTokenElement = document.querySelector('meta[name="csrf-token"]');
+const csrfToken = csrfTokenElement ? csrfTokenElement.getAttribute('content') : null;
+
+if (!csrfToken) {
+    console.error("Erreur : le jeton CSRF est manquant dans la balise <meta>. Vérifiez que la balise <meta name='csrf-token'> est présente dans votre HTML.");
+}
+
 // Fonction pour afficher le modal
 const showModalHandler = () => {
     showModal.value = true;
+    submitDisabled.value = true; // Désactiver le bouton jusqu'à la fin du chargement
 };
 
 // Fonction pour fermer le modal
@@ -20,29 +43,96 @@ const closeModalHandler = () => {
     showModal.value = false;
 };
 
-// Fonction pour marquer la mission comme terminée
-const markAsCompleted = () => {
-    showModalHandler();
+// Fonction pour gérer la sélection des fichiers
+const fileInputHandler = (event, key) => {
+    const file = event.target.files[0];
+    if (file && file.size > 3 * 1024 * 1024) {
+        Swal.fire({
+            title: "Erreur",
+            text: "La taille du fichier dépasse 3 Mo. Veuillez sélectionner une image plus petite.",
+            icon: "error",
+        });
+        event.target.value = ""; // Réinitialiser l'input
+    } else {
+        selectedImages.value[key] = file; // Stocke le fichier pour le formulaire global
+        checkAllFilesSelected(); // Vérifier si tous les fichiers sont sélectionnés
+    }
 };
 
-// Fonction pour soumettre les données du formulaire
+// Fonction pour vérifier si tous les fichiers requis sont sélectionnés
+const checkAllFilesSelected = () => {
+    submitDisabled.value = !Object.values(selectedImages.value).every(file => file !== null);
+};
+
+// Fonction pour créer en toute sécurité l'URL d'aperçu d'une image
+const getPreviewUrl = (file) => {
+    return file ? URL.createObjectURL(file) : '';
+};
+
+// Fonction pour soumettre le formulaire et charger tous les fichiers ensemble
 const submitForm = async (event) => {
     event.preventDefault();
-    const formData = new FormData(event.target);
+
+    if (isUploading.value) {
+        Swal.fire({
+            title: "Veuillez patienter",
+            text: "Le chargement des images est en cours. Veuillez patienter jusqu'à la fin.",
+            icon: "info",
+        });
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('mission_id', mission.value.id);
+    if (csrfToken) formData.append('_token', csrfToken);
+
+    // Ajouter chaque fichier sélectionné dans formData
+    for (let [key, file] of Object.entries(selectedImages.value)) {
+        if (file) formData.append(key, file);
+    }
+
+    isUploading.value = true;
+    submitDisabled.value = true;
+    uploadProgress.value = 0;
 
     try {
-        await fetch('/poseterminer', {
-            method: 'POST',
-            body: formData,
-        });
-        // Mettre à jour l'attribut raisonsocial ici
-        await fetch(`/missions/${mission.value.id}/update-raisonsocial`, {
-            method: 'PUT',
+    const response = await fetch('/poseterminer', {
+        method: 'POST',
+        body: formData,
+    });
+
+    if (response.ok) {
+        isUploading.value = false;
+        Swal.fire({
+            title: "Upload terminé",
+            text: "Les images ont été téléchargées avec succès",
+            icon: "success",
+        }).then(() => {
+            // Redirige vers la page précédente après avoir cliqué sur "Okay"
+            window.history.back();
         });
         closeModalHandler();
-    } catch (error) {
-        console.error('Erreur lors de l\'envoi des données:', error);
+    } else {
+        const errorData = await response.json();
+        console.error("Erreur lors du téléchargement des images:", errorData);
+        Swal.fire({
+            title: "Erreur",
+            text: "Erreur lors du téléchargement des images",
+            icon: "error",
+        });
     }
+} catch (error) {
+    console.error("Erreur lors de l'envoi des données:", error);
+    Swal.fire({
+        title: "Erreur",
+        text: "Erreur lors du téléchargement des images",
+        icon: "error",
+    });
+} finally {
+    isUploading.value = false;
+    submitDisabled.value = false;
+}
+
 };
 </script>
 
@@ -100,14 +190,14 @@ const submitForm = async (event) => {
                             class="w-full h-auto rounded-lg transition-transform transform group-hover:scale-105 cursor-pointer"
                             @click="window.location.href=`/image/${image.id}`" 
                         />
-                        <a :href="image.image_path" class="absolute inset-0" target="blanck"></a>
+                        <a :href="image.image_path" class="absolute inset-0" target="blank"></a>
                     </div>
                 </div>
             </div>
 
             <!-- Bouton pour marquer comme terminé -->
             <button 
-                @click="markAsCompleted" 
+                @click="showModalHandler" 
                 class="bg-green-500 text-white px-6 py-3 rounded-lg text-lg font-semibold hover:bg-green-600 transition duration-200"
             >
                 Marquer comme terminé
@@ -115,123 +205,74 @@ const submitForm = async (event) => {
         </div>
 
         <!-- Modal pour télécharger des photos -->
-        <div v-if="showModal" class="fixed inset-0 flex items-center justify-center z-50 overflow-y-auto bg-black bg-opacity-50">
-    <div class="bg-white p-6 rounded-lg shadow-lg max-w-lg w-full">
-        <!-- Contenu du modal ici -->
+        <div v-if="showModal" class="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+            <div class="bg-white p-6 rounded-lg shadow-lg max-w-lg w-full">
                 <h3 class="text-xl font-semibold mb-4">Télécharger les Photos</h3>
-                <form method="POST" action="/poseterminer" enctype="multipart/form-data">
-   
-    <input type="hidden" name="mission_id" :value="mission.id" />
+                <form @submit.prevent="submitForm">
+                    <input type="hidden" name="mission_id" :value="mission.id" />
 
-    <div class="mb-2">
-        <label for="photo_emplacement_evaporateur" class="block text-gray-700 mb-1 text-sm">
-            Photo emplacement évaporateur <span class="text-red-500">*</span>
-        </label>
-        <input 
-            type="file" 
-            id="photo_emplacement_evaporateur" 
-            name="photo_emplacement_evaporateur" 
-            required 
-            accept="image/*" 
-            class="block w-full text-sm text-gray-700 border border-gray-300 rounded p-1 h-8"
-        />
-        <small class="text-gray-500">Max 2.5 Mo</small>
-    </div>
-    
-    <div class="mb-2">
-        <label for="photo_numero_serie_evaporateur" class="block text-gray-700 mb-1 text-sm">
-            Photo numéro de série évaporateur <span class="text-red-500">*</span>
-        </label>
-        <input 
-            type="file" 
-            id="photo_numero_serie_evaporateur" 
-            name="photo_numero_serie_evaporateur" 
-            required 
-            accept="image/*" 
-            class="block w-full text-sm text-gray-700 border border-gray-300 rounded p-1 h-8"
-        />
-        <small class="text-gray-500">Max 2.5 Mo</small>
-    </div>
-    
-    <div class="mb-2">
-        <label for="photo_raccordement_electrique" class="block text-gray-700 mb-1 text-sm">
-            Photo raccordement électrique <span class="text-red-500">*</span>
-        </label>
-        <input 
-            type="file" 
-            id="photo_raccordement_electrique" 
-            name="photo_raccordement_electrique" 
-            required 
-            accept="image/*" 
-            class="block w-full text-sm text-gray-700 border border-gray-300 rounded p-1 h-8"
-        />
-        <small class="text-gray-500">Max 2.5 Mo</small>
-    </div>
-    
-    <div class="mb-2">
-        <label for="photo_emplacement_condensateur" class="block text-gray-700 mb-1 text-sm">
-            Photo emplacement condensateur <span class="text-red-500">*</span>
-        </label>
-        <input 
-            type="file" 
-            id="photo_emplacement_condensateur" 
-            name="photo_emplacement_condensateur" 
-            required 
-            accept="image/*" 
-            class="block w-full text-sm text-gray-700 border border-gray-300 rounded p-1 h-8"
-        />
-        <small class="text-gray-500">Max 2.5 Mo</small>
-    </div>
-    
-    <div class="mb-2">
-        <label for="photo_numero_serie_condensateur" class="block text-gray-700 mb-1 text-sm">
-            Photo numéro de série condensateur <span class="text-red-500">*</span>
-        </label>
-        <input 
-            type="file" 
-            id="photo_numero_serie_condensateur" 
-            name="photo_numero_serie_condensateur" 
-            required 
-            accept="image/*" 
-            class="block w-full text-sm text-gray-700 border border-gray-300 rounded p-1 h-8"
-        />
-        <small class="text-gray-500">Max 2.5 Mo</small>
-    </div>
+                    <!-- Champs d'upload avec prévisualisation et responsive layout -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div v-for="(label, key) in {
+                                photo_emplacement_evaporateur: 'Photo emplacement évaporateur',
+                                photo_numero_serie_evaporateur: 'Photo numéro de série évaporateur',
+                                photo_raccordement_electrique: 'Photo raccordement électrique',
+                                photo_emplacement_condensateur: 'Photo emplacement condensateur',
+                                photo_numero_serie_condensateur: 'Photo numéro de série condensateur'
+                            }" :key="key" class="mb-4">
+                            <label :for="key" class="block text-gray-700 mb-2 text-sm font-semibold">
+                                {{ label }} <span class="text-red-500">*</span>
+                            </label>
+                            <div class="flex items-center gap-2">
+                                <input 
+                                    type="file" 
+                                    :id="key" 
+                                    :name="key" 
+                                    required 
+                                    accept="image/*"
+                                    @change="event => fileInputHandler(event, key)"
+                                    class="block w-full text-sm text-gray-600 border border-gray-300 rounded p-2"
+                                />
+                                <div v-if="selectedImages[key]" class="w-16 h-16 border border-gray-300 rounded-lg overflow-hidden">
+                                    <img :src="getPreviewUrl(selectedImages[key])" alt="Preview" class="w-full h-full object-cover" />
+                                </div>
+                            </div>
+                            <small class="text-gray-500">Taille maximale : 3 Mo</small>
+                        </div>
+                    </div>
 
-    <div class="flex justify-end mt-4">
-        <button 
-            type="submit" 
-            class="bg-blue-500 text-white px-4 py-2 rounded-lg text-lg font-semibold hover:bg-blue-600 transition duration-200"
-        >
-            Enregistrer
-        </button>
-        <button 
+                    <div v-if="isUploading" class="w-full bg-gray-200 rounded-full h-4 mt-4">
+                        <div :style="{ width: uploadProgress + '%' }" class="bg-blue-500 h-4 rounded-full"></div>
+                    </div>
+
+                    <div class="flex justify-end mt-4">
+                        <button 
+                            type="submit" 
+                            :disabled="submitDisabled" 
+                            class="bg-blue-500 text-white px-4 py-2 rounded-lg text-lg font-semibold hover:bg-blue-600 transition duration-200 disabled:opacity-50"
+                        >
+                            Enregistrer
+                        </button>
+                        <button 
                             type="button" 
-                            @click="showModal = false"
+                            @click="closeModalHandler"
                             class="bg-red-500 text-white px-4 py-2 rounded-lg text-lg font-semibold hover:bg-red-600 transition duration-200 ml-4"
                         >
                             Annuler
                         </button>
-    </div>
-</form>
-
-
+                    </div>
+                </form>
             </div>
         </div>
     </AppLayout>
 </template>
 
 <style scoped>
-/* Ajoute tes styles personnalisés ici */
-</style>
-<script>
-export default {
-    data() {
-        return {
-            showModal: false,
-            mission: { id: 1 } // Exemple de données, à adapter
-        };
+@media (min-width: 768px) {
+    .modal-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
     }
-};
-</script>
-
+}
+</style>

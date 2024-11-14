@@ -44,60 +44,72 @@ const markAsCompleted = (missionId) => {
                 />
             </div>
 
-            <!-- Tableau des missions -->
-            <table class="min-w-full bg-white border border-gray-300 rounded-lg shadow-lg">
-                <thead class="bg-gray-200 border-b border-gray-300">
-                    <tr>
-                        <th class="py-3 px-4 text-left font-medium text-gray-700">ID</th>
-                        <th class="py-3 px-4 text-left font-medium text-gray-700">Nom</th>
-                        <th class="py-3 px-4 text-left font-medium text-gray-700">Prénom</th>
-                        <th class="py-3 px-4 text-left font-medium text-gray-700">Portable</th>
-                        <th class="py-3 px-4 text-left font-medium text-gray-700">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr v-for="mission in filteredMissions" :key="mission.id" class="hover:bg-gray-50">
-                        <td class="py-3 px-4 border-b text-gray-700">{{ mission.id }}</td>
-                        <td class="py-3 px-4 border-b text-gray-700">{{ mission.nom }}</td>
-                        <td class="py-3 px-4 border-b text-gray-700">{{ mission.prenom }}</td>
-                        <td class="py-3 px-4 border-b text-gray-700">{{ mission.portable }}</td>
-                        <td class="py-3 px-4 border-b">
-                            <button
-                                @click="viewMissionDetails(mission.id)"
-                                :class="[
-                                    'px-4 py-2 rounded font-semibold text-white',
-                                    mission.raisonsocial == 1 ? 'bg-orange-500 hover:bg-orange-600' : 'bg-blue-500 hover:bg-blue-600'
-                                ]"
-                            >
-                                {{ mission.raisonsocial == 1 ? 'Plus' : 'Détails et démarré' }}
-                            </button>
-                            <!-- Notification -->
-                            <div v-if="mission.raisonsocial !== undefined" class="mt-2">
-                                <div
-                                    v-if="mission.raisonsocial == 1"
-                                    class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded-md relative"
-                                    role="alert"
+            <!-- Conteneur du tableau pour le scroll -->
+            <div class="table-container overflow-auto max-h-[400px] border border-gray-300 rounded-lg shadow-lg">
+                <table class="min-w-full bg-white">
+                    <thead class="sticky top-0 bg-gray-200 border-b border-gray-300">
+                        <tr>
+                            <th class="py-3 px-4 text-left font-medium text-gray-700">ID</th>
+                            <th class="py-3 px-4 text-left font-medium text-gray-700">Nom</th>
+                            <th class="py-3 px-4 text-left font-medium text-gray-700">Prénom</th>
+                            <th class="py-3 px-4 text-left font-medium text-gray-700">Portable</th>
+                            <th class="py-3 px-4 text-left font-medium text-gray-700">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="mission in filteredMissions" :key="mission.id" class="hover:bg-gray-50">
+                            <td class="py-3 px-4 border-b text-gray-700">{{ mission.id }}</td>
+                            <td class="py-3 px-4 border-b text-gray-700">{{ mission.nom }}</td>
+                            <td class="py-3 px-4 border-b text-gray-700">{{ mission.prenom }}</td>
+                            <td class="py-3 px-4 border-b text-gray-700">{{ mission.portable }}</td>
+                            <td class="py-3 px-4 border-b">
+                                <button
+                                    @click="viewMissionDetails(mission.id)"
+                                    :class="[
+                                        'px-4 py-2 rounded font-semibold text-white',
+                                        mission.raisonsocial == 1 ? 'bg-orange-500 hover:bg-orange-600' : 'bg-blue-500 hover:bg-blue-600'
+                                    ]"
                                 >
-                                    <strong class="font-bold">Attention !</strong><br>
-                                    <span class="block sm:inline">En cours de validation</span>
+                                    {{ mission.raisonsocial == 1 ? 'Corriger et terminer' : 'Détails et démarré' }}
+                                </button>
+                                <!-- Notification -->
+                                <div v-if="mission.raisonsocial !== undefined" class="mt-2">
+                                    <div
+                                        v-if="mission.raisonsocial == 1"
+                                        class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded-md relative"
+                                        role="alert"
+                                    >
+                                        <strong class="font-bold">Attention !</strong><br>
+                                        <span class="block sm:inline">En cours de validation</span>
+                                    </div>
+                                    <div
+                                        v-else
+                                        class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md relative"
+                                        role="alert"
+                                    >
+                                        <strong class="font-bold">Attention !</strong>
+                                        <span class="block sm:inline">Mission non démarrée <br> ou à corriger</span>
+                                    </div>
                                 </div>
-                                <div
-                                    v-else
-                                    class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md relative"
-                                    role="alert"
-                                >
-                                    <strong class="font-bold">Attention !</strong>
-                                    <span class="block sm:inline">Mission non démarrée <br> ou à corriger</span>
-                                </div>
-                            </div>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </AppLayout>
 </template>
 
 <style scoped>
-/* Ajoute tes styles personnalisés ici */
+/* Style pour fixer l'en-tête du tableau */
+.table-container {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+thead th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
 </style>

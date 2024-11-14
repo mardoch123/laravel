@@ -8,6 +8,9 @@ use App\Http\Controllers\WelcomeController;
 use App\Http\Controllers\ImageController;
 use App\Http\Controllers\PoseterminerController;
 
+Route::get('/images/{filename}', [PoseterminerController::class, 'showImage'])->name('image.display');
+
+
 // Route pour la page d'accueil
 Route::get('/', [WelcomeController::class, 'index'])->name('home');
 
@@ -28,7 +31,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 Route::middleware('auth')->get('/mes-missionss', [MissionController::class, 'mesMissionsZ'])->name('missions.mes');
 
-Route::get('/missionsz/{id}', [MissionController::class, 'showZ'])->name('missions.show');
+Route::get('/missionsz/{id}', [MissionController::class, 'showZ'])->name('missionsz.show');
 
 // web.php
 Route::get('/image/{id}', [ImageController::class, 'show'])->name('image.show');

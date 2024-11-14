@@ -119,21 +119,29 @@ class MissionController extends Controller
         $images = Image::where('idclient', $id)->get();
     
         // Construire les URLs d'images
-        $baseLink = 'https://commercial.ecoagir-appli.com/devis/';
-        $clientCommerce = $climatiseurs->first()->client->commerce ?? ''; // Ajuster selon votre modèle
-    
-        $formattedImages = $images->map(function ($image) use ($baseLink, $clientCommerce) {
-            $imagePath = htmlspecialchars($image->image_path);
-            $link = $baseLink . $imagePath;
-    
-            if ($clientCommerce === 'AIR') {
-                $link = str_replace('/devis/', '/devisair/', $link);
-            }
-    
-            return [
-                'image_path' => $link
-            ];
-        });
+$baseLink = 'https://commercial.ecoagir-appli.com/';
+$clientCommerce = $climatiseurs->first()->client->commerce ?? ''; // Ajuster selon votre modèle
+
+// Fonction pour vérifier la disponibilité d'un répertoire
+function checkDirectoryExists($url) {
+    $headers = @get_headers($url);
+    return $headers && strpos($headers[0], '200') !== false;
+}
+
+// Déterminer le répertoire accessible
+$devisUrl = $baseLink . 'devis/';
+$devisAirUrl = $baseLink . 'devisair/';
+$directoryUrl = checkDirectoryExists($devisUrl) ? $devisUrl : $devisAirUrl;
+
+$formattedImages = $images->map(function ($image) use ($directoryUrl) {
+    $imagePath = htmlspecialchars($image->image_path);
+    $link = $directoryUrl . $imagePath;
+
+    return [
+        'image_path' => $link
+    ];
+});
+
     
         // Retourner les détails via Inertia
         return inertia('MissionDetails', [
@@ -181,11 +189,12 @@ public function showRejectedMissions()
 
     // Récupère les missions qui répondent aux critères spécifiés
     $missions = Mission::where('statut', 1)
-        ->where(function ($query) use ($userEmail) {
-            $query->where('attributerpose', '!=', $userEmail)
-                  ->orWhere('poseurs', '=', $userEmail);
-        })
-        ->get();
+    ->where(function ($query) use ($userEmail) {
+        $query->where('attributerpose', '=', $userEmail)
+            ->where('poseurs', '!=', $userEmail);
+    })
+    ->get();
+
 
     // Vérifie s'il y a des missions qui correspondent
     if ($missions->isEmpty()) {
@@ -212,7 +221,4 @@ public function updateRaisonsocial($id)
     }
     return response()->json(['message' => 'Mission non trouvée.'], 404);
 }
-
-
-
 }
