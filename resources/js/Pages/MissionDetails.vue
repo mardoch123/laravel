@@ -96,50 +96,68 @@ const submitForm = async (event) => {
     uploadProgress.value = 0;
 
     try {
-    const response = await fetch('/poseterminer', {
-        method: 'POST',
-        body: formData,
-    });
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/poseterminer', true);
 
-    if (response.ok) {
-        isUploading.value = false;
-        Swal.fire({
-            title: "Upload terminé",
-            text: "Les images ont été téléchargées avec succès",
-            icon: "success",
-        }).then(() => {
-            // Redirige vers la page précédente après avoir cliqué sur "Okay"
-            window.history.back();
+        // Suivi de la progression de l'upload
+        xhr.upload.addEventListener("progress", (event) => {
+            if (event.lengthComputable) {
+                uploadProgress.value = Math.round((event.loaded / event.total) * 100);
+            }
         });
-        closeModalHandler();
-    } else {
-        const errorData = await response.json();
-        console.error("Erreur lors du téléchargement des images:", errorData);
+
+        xhr.onload = async () => {
+            isUploading.value = false;
+            submitDisabled.value = false;
+
+            if (xhr.status === 200) {
+                Swal.fire({
+                    title: "Upload terminé",
+                    text: "Les images ont été téléchargées avec succès",
+                    icon: "success",
+                }).then(() => {
+                    window.history.back();
+                });
+                closeModalHandler();
+            } else {
+                const errorData = JSON.parse(xhr.responseText);
+                console.error("Erreur lors du téléchargement des images:", errorData);
+                Swal.fire({
+                    title: "Erreur",
+                    text: "Erreur lors du téléchargement des images",
+                    icon: "error",
+                });
+            }
+        };
+
+        xhr.onerror = () => {
+            isUploading.value = false;
+            submitDisabled.value = false;
+            Swal.fire({
+                title: "Erreur",
+                text: "Erreur lors du téléchargement des images",
+                icon: "error",
+            });
+        };
+
+        xhr.send(formData);
+    } catch (error) {
+        console.error("Erreur lors de l'envoi des données:", error);
+        isUploading.value = false;
+        submitDisabled.value = false;
         Swal.fire({
             title: "Erreur",
             text: "Erreur lors du téléchargement des images",
             icon: "error",
         });
     }
-} catch (error) {
-    console.error("Erreur lors de l'envoi des données:", error);
-    Swal.fire({
-        title: "Erreur",
-        text: "Erreur lors du téléchargement des images",
-        icon: "error",
-    });
-} finally {
-    isUploading.value = false;
-    submitDisabled.value = false;
-}
-
 };
 </script>
 
 <template>
     <Head title="Détails de la Mission" />
     <AppLayout title="Détails de la Mission">
-        <div class="container mx-auto p-6 bg-gray-100 rounded-lg shadow-md">
+        <div class="container mx-auto p-6 bg-gray-100 rounded-lg shadow-md overflow-x-auto" >
             <h2 class="text-3xl font-extrabold text-gray-800 mb-6">Détails de la Mission</h2>
 
             <!-- Informations de la Mission -->
@@ -205,14 +223,20 @@ const submitForm = async (event) => {
         </div>
 
         <!-- Modal pour télécharger des photos -->
+        <!-- Modal pour télécharger des photos -->
         <div v-if="showModal" class="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
-            <div class="bg-white p-6 rounded-lg shadow-lg max-w-lg w-full">
+            <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md md:max-w-lg lg:max-w-xl h-full md:h-auto md:overflow-visible overflow-y-auto">
                 <h3 class="text-xl font-semibold mb-4">Télécharger les Photos</h3>
-                <form @submit.prevent="submitForm">
-                    <input type="hidden" name="mission_id" :value="mission.id" />
+
+                <!-- Loader visible pendant le chargement -->
+                <div v-if="showLoader" class="flex items-center justify-center my-4">
+                    <div class="loader"></div> <!-- Style pour loader dans CSS -->
+                </div>
+                
+                <form @submit.prevent="submitForm" class="flex flex-col space-y-4">
 
                     <!-- Champs d'upload avec prévisualisation et responsive layout -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         <div v-for="(label, key) in {
                                 photo_emplacement_evaporateur: 'Photo emplacement évaporateur',
                                 photo_numero_serie_evaporateur: 'Photo numéro de série évaporateur',
@@ -241,26 +265,35 @@ const submitForm = async (event) => {
                         </div>
                     </div>
 
-                    <div v-if="isUploading" class="w-full bg-gray-200 rounded-full h-4 mt-4">
-                        <div :style="{ width: uploadProgress + '%' }" class="bg-blue-500 h-4 rounded-full"></div>
+                    <!-- Barre de progression -->
+                    <!-- Barre de progression -->
+                    <div v-if="isUploading" class="w-full bg-gray-200 rounded-full h-4">
+                        <div :style="{ width: uploadProgress + '%' }" class="bg-blue-500 h-4 rounded-full transition-all duration-500"></div>
                     </div>
 
-                    <div class="flex justify-end mt-4">
-                        <button 
-                            type="submit" 
-                            :disabled="submitDisabled" 
-                            class="bg-blue-500 text-white px-4 py-2 rounded-lg text-lg font-semibold hover:bg-blue-600 transition duration-200 disabled:opacity-50"
-                        >
-                            Enregistrer
-                        </button>
-                        <button 
-                            type="button" 
-                            @click="closeModalHandler"
-                            class="bg-red-500 text-white px-4 py-2 rounded-lg text-lg font-semibold hover:bg-red-600 transition duration-200 ml-4"
-                        >
-                            Annuler
-                        </button>
-                    </div>
+                    <!-- Boutons d'action avec responsive adaptatif pour mobile, tablette, et ordinateur -->
+                    <div 
+    :class="{
+        'fixed bottom-0 left-0 w-full bg-white p-4 border-t border-gray-300': isSmallScreen,
+        'mt-4 md:relative': !isSmallScreen
+    }"
+    class="z-50 flex flex-col sm:flex-row sm:space-x-4 lg:space-x-6">
+    <button 
+        type="submit" 
+        :disabled="submitDisabled" 
+        class="w-full bg-blue-500 text-white px-4 py-2 rounded-lg text-lg font-semibold hover:bg-blue-600 transition duration-200 disabled:opacity-50"
+    >
+        Enregistrer
+    </button>
+    <button 
+        type="button" 
+        @click="closeModalHandler"
+        class="w-full bg-red-500 text-white px-4 py-2 rounded-lg text-lg font-semibold hover:bg-red-600 transition duration-200 mt-4 sm:mt-0"
+    >
+        Annuler
+    </button>
+</div>
+
                 </form>
             </div>
         </div>
@@ -268,11 +301,36 @@ const submitForm = async (event) => {
 </template>
 
 <style scoped>
-@media (min-width: 768px) {
+@media (min-width: 640px) {
+    /* Small screens, usually tablets */
     .modal-grid {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
         gap: 1rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    /* Large screens, usually desktops */
+    .modal-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.5rem;
+    }
+}
+
+/* Loader CSS */
+.loader {
+    border: 4px solid rgba(0, 0, 0, 0.1);
+    border-left-color: #3498db;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
     }
 }
 </style>
