@@ -1,0 +1,1 @@
+import{_ as s}from"./_plugin-vue_export-helper-DlAUqK2U.js";import{o,d as e,a as t}from"./app-Pst8fObY.js";/* empty css            */const n={name:"Missions"},r=t("h1",null,"Missions",-1),a=[r];function c(i,_,p,d,l,m){return o(),e("div",null,a)}const $=s(n,[["render",c]]);export{$ as default};

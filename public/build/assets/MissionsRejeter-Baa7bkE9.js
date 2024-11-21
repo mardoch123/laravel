@@ -1,0 +1,1 @@
+import{_ as e}from"./_plugin-vue_export-helper-DlAUqK2U.js";import{o as s,d as o,a as t}from"./app-Pst8fObY.js";/* empty css            */const r={name:"MissionsRejeter"},n=t("h1",null,"Mes Missions rejeter",-1),a=[n];function c(i,_,p,d,l,m){return s(),o("div",null,a)}const M=e(r,[["render",c]]);export{M as default};
