@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { Head, usePage } from '@inertiajs/vue3';
 import Swal from 'sweetalert2';
@@ -9,6 +9,22 @@ const mission = ref(props.mission);
 const climatiseurs = ref(props.climatiseurs);
 const images = ref(props.images);
 const showModal = ref(false);
+
+// Propriété pour détecter les petits écrans
+const screenWidth = ref(window.innerWidth);
+const isSmallScreen = computed(() => screenWidth.value <= 768);
+
+const updateScreenWidth = () => {
+    screenWidth.value = window.innerWidth;
+};
+
+onMounted(() => {
+    window.addEventListener('resize', updateScreenWidth);
+});
+
+onUnmounted(() => {
+    window.removeEventListener('resize', updateScreenWidth);
+});
 
 // Prévisualisation des images sélectionnées
 const selectedImages = ref({
