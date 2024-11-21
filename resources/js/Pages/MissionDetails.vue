@@ -169,7 +169,6 @@ const submitForm = async (event) => {
     }
 };
 </script>
-
 <template>
     <Head title="Détails de la Mission" />
     <AppLayout title="Détails de la Mission">
