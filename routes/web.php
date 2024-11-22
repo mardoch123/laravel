@@ -14,6 +14,15 @@ Route::get('/images/{filename}', [PoseterminerController::class, 'showImage'])->
 // Route pour la page d'accueil
 Route::get('/', [WelcomeController::class, 'index'])->name('home');
 
+Route::post('/upload-images', function () {
+    include public_path('upload.php'); // Inclut le fichier de traitement
+});
+
+Route::get('/success_page', function () {
+    return view('success_page'); // Créez une vue dans resources/views/success_page.blade.php
+});
+
+
 Route::get('/missions/rejetees', [MissionController::class, 'showRejectedMissions'])->name('missions.rejetees');
 
 // Routes accessibles sans authentification
@@ -46,6 +55,10 @@ Route::put('/missions/{id}/update-raisonsocial', [MissionController::class, 'upd
 
 Route::get('/', function () {
     return redirect()->route('login');
+});
+
+Route::get('/imagesin', function () {
+    return response()->file(public_path('imagesin.php'));
 });
 
 Route::middleware([
